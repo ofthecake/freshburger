@@ -1,0 +1,216 @@
+-----------------------10_member-------------------------
+
+-- 오라클 커맨드 창을 실행
+
+conn system/oracle
+
+create user springuser identified by oracle;
+
+grant resource, connect to springuser;
+
+conn springuser/oracle;
+
+select * from tab;
+
+create table tbl_member (
+email varchar2(100),
+pwd varchar2(1000) not null,
+nickname varchar2(100) not null,
+regdate date default sysdate
+);
+
+alter table tbl_member add constraint pk_member
+primary key(email);
+
+desc tbl_member;
+
+-----------------------20_product-------------------------
+create table tbl_product (
+pno number(10),
+title varchar2(200) not null,
+content varchar2(4000) not null,
+writer varchar2(100) not null,
+price number(7,2) default 0.0,
+regdate date default sysdate,
+moddate date default sysdate,
+readcount number(10) default 0,
+cmtqty number(10) default 0,
+constraint pk_product primary key(pno)
+);
+
+create sequence seq_product_pno
+start with 1
+increment by 1
+nocycle nocache;
+
+-- EX insert sql
+insert into tbl_product (pno, title, content, writer)
+values (seq_product_pno.nextval, 'test title', 'test content', 'user01@user.com');
+
+-----------------------30_comment-------------------------
+create table tbl_comment (
+cno number(10),
+pno number(10) not null,
+writer varchar2(100) not null,
+content varchar2(1000) not null,
+regdate date default sysdate,
+constraint pk_comment primary key(cno)
+);
+
+alter table tbl_comment
+add constraint fk_comment_pno
+foreign key(pno) references tbl_product(pno);
+
+create sequence seq_comment_cno
+start with 1
+increment by 1
+nocycle nocache;
+
+-----------------------40_fileupload-------------------------
+create table tbl_files (
+uuid varchar2(200),
+savedir varchar2(200) not null,
+fname varchar2(1000) not null,
+ftype number(1) default 0,
+pno number(10),
+constraint pk_files primary key(uuid)
+);
+
+alter table tbl_files add constraint fk_file_pno
+foreign key (pno) references tbl_product (pno);
+
+
+-----------------------50_search-------------------------
+drop sequence seq_product_pno;
+drop sequence seq_comment_cno;
+
+delete from tbl_comment;
+delete from tbl_files;
+delete from tbl_product;
+delete from tbl_member;
+
+create sequence seq_product_pno
+start with 1
+increment by 1
+nocycle nocache;
+
+create sequence seq_comment_cno
+start with 1
+increment by 1
+nocycle nocache;
+
+commit;
+
+-----------------------70_aop-------------------------
+-- 각 pno 번호에 댓글 갯수 동기화하기
+update tbl_product set cmtqty =
+ (select count(cno) from tbl_comment where tbl_comment.pno = tbl_product.pno); 
+
+select pno, cmtqty from tbl_product;
+
+
+-----------------------80_security-------------------------
+alter table tbl_member add auth varchar2(10) default 'MEM';
+alter table tbl_member add enabled number(1) default 1;
+alter table tbl_member add failcnt number(1) default 0;
+
+
+
+
+
+-------------------------cart(ct)----------------------------
+
+create table fb_cart (
+ctno number(10),
+pno number(10),
+id varchar2(100),
+pcount number(10)
+);
+
+alter table fb_cart add constraint pk_cart primary key(ctno);
+
+create sequence fb_seq_cart_ctno
+start with 1
+increment by 1
+MAXVALUE 9999999999
+cycle nocache;
+
+alter table fb_cart
+add constraint fb_fk_cart_pno
+foreign key(pno) references fb_product(pno);
+
+alter table fb_cart
+add constraint fb_fk_cart_id
+foreign key(id) references fb_member(id);
+
+-------------------------side(s)----------------------------
+
+create table fb_product_side (
+sno number(10),
+sname varchar2(20),
+sprice varchar2(20),
+shits number(38)
+);
+
+alter table fb_side add constraint pk_side primary key(sno);
+
+create sequence fb_seq_side_sno
+start with 1
+increment by 1
+MAXVALUE 9999999999
+nocycle nocache;
+
+-------------------------beverage(b)----------------------------
+
+create table fb_product_beverage (
+bno number(10),
+bname varchar2(20),
+bprice varchar2(20),
+bhits number(38)
+);
+
+alter table fb_beverage add constraint pk_beverage primary key(bno);
+
+create sequence fb_seq_beverage_bno
+start with 1
+increment by 1
+MAXVALUE 9999999999
+nocycle nocache;
+
+alter table fb_product
+add constraint fb_fk_product_sno
+foreign key(sno) references fb_product_side(sno);
+
+alter table fb_product
+add constraint fb_fk_product_bno
+foreign key(bno) references fb_product_beverage(bno);
+
+-------------------------order(o)----------------------------
+
+create table fb_order (
+ono number(10),
+ordernum varchar2(20),
+ctno number(10),
+saledate date default sysdate,
+amount number(7)
+);
+
+alter table fb_order add constraint pk_order_ono primary key(ono);
+
+create sequence fb_seq_order_ono
+start with 1
+increment by 1
+MAXVALUE 9999999999
+nocycle nocache;
+
+create sequence fb_seq_order_ordernum
+start with 1
+increment by 1
+MAXVALUE 999
+cycle nocache;
+
+alter table fb_order
+add constraint fb_fk_order_ctno
+foreign key(ctno) references fb_cart(ctno);
+
+ctno가 여러개라서 id를 가져왔어야함 관련 fk 삭제하고 새로 ㄱ
